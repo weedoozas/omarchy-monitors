@@ -4,6 +4,8 @@ Gestor visual de pantallas para Hyprland y Omarchy. Es un proyecto comunitario i
 
 Arrastra los monitores para ordenar tu escritorio, identifica cada pantalla física y ajusta resolución, frecuencia y escala. Los bordes se acoplan al acercarlos y la aplicación avisa cuando una distribución se superpone o deja pantallas aisladas.
 
+La opción **Nombres siempre visibles** muestra en la esquina inferior derecha de cada monitor encendido un número estable, el conector y el modelo. Las etiquetas no capturan clics y siguen funcionando al cerrar la aplicación; se pueden desactivar desde el mismo control. El número se conserva al desconectar y reconectar cada salida.
+
 Los cambios se aplican con un temporizador de confirmación. Si no confirmas en 25 segundos, un proceso independiente restaura la configuración anterior incluso si la ventana se cierra. Si detecta que otro programa cambió los archivos, evita sobrescribirlos y conserva datos para recuperación en `~/.local/state/pantallas/`.
 
 ## Instalación

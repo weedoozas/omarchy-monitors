@@ -11,6 +11,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GLib
 from . import backend
+from . import labels
 
 CSS = b'''
 * { font-family: "Pixelify Sans", monospace; font-size: 17px; }
@@ -113,7 +114,7 @@ class Canvas(Gtk.DrawingArea):
             cr.set_source_rgb(*rgb(colors['selection'] if chosen else colors['dark_background'])); cr.fill_preserve()
             cr.set_line_width(3 if chosen else 1.5); cr.set_source_rgb(*rgb(colors['accent'] if chosen else colors['bright_foreground'])); cr.stroke()
             cr.set_source_rgb(*rgb(colors['foreground'])); cr.select_font_face('Pixelify Sans', 0, 1); cr.set_font_size(max(11,min(17,w/8)))
-            text = d['name']; ext = cr.text_extents(text); cr.move_to(x+(w-ext.width)/2,y+h/2-2); cr.show_text(text)
+            text = f"{self.app.numbers.get(d['name'], '?')} · {d['name']}"; ext = cr.text_extents(text); cr.move_to(x+(w-ext.width)/2,y+h/2-2); cr.show_text(text)
             cr.select_font_face('Pixelify Sans',0,0); cr.set_font_size(max(10,min(12,w/12)))
             text = f"{d['width']} × {d['height']} · {d['scale']:g}×"; ext = cr.text_extents(text); cr.move_to(x+(w-ext.width)/2,y+h/2+17); cr.show_text(text)
 
@@ -169,7 +170,7 @@ class App(Gtk.Window):
         super().__init__(title='Omarchy Monitors')
         self.set_default_size(1060, 690); self.set_position(Gtk.WindowPosition.CENTER)
         self.connect('destroy', Gtk.main_quit)
-        self.displays=[]; self.selected=None; self.updating=False; self.original=''; self.tx=None
+        self.displays=[]; self.selected=None; self.updating=False; self.original=''; self.tx=None; self.numbers={}
         css = Gtk.CssProvider(); css.load_from_data(themed_css(theme()))
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         root=Gtk.Box(orientation=Gtk.Orientation.VERTICAL); self.add(root)
@@ -205,6 +206,11 @@ class App(Gtk.Window):
         side.pack_start(label('Escala','hint'),False,False,0)
         self.scales=Gtk.ComboBoxText(); self.scales.connect('changed',self.scale_changed); side.pack_start(self.scales,False,False,0)
         side.pack_start(label('Una escala mayor aumenta el contenido y reduce el tamaño en el mapa.','hint'),False,False,0)
+        side.pack_start(Gtk.Separator(),False,False,3)
+        labelrow=Gtk.Box(spacing=8); labelrow.pack_start(label('Nombres siempre visibles'),True,True,0)
+        self.labels_switch=Gtk.Switch(); self.labels_switch.set_active(labels.enabled())
+        self.labels_switch.connect('notify::active',self.toggle_labels); labelrow.pack_end(self.labels_switch,False,False,0)
+        side.pack_start(labelrow,False,False,0)
         side.pack_start(Gtk.Box(),True,True,0)
         self.apply_button=button('Aplicar cambios',self.apply,True); side.pack_start(self.apply_button,False,False,0)
         side.pack_start(label('Podrás confirmar o volver atrás.','hint'),False,False,0)
@@ -219,12 +225,16 @@ class App(Gtk.Window):
             self.original=backend.CONFIG.read_text()
             self.displays=backend.snapshot(backend.live_monitors(), backend.read_saved(self.original))
             if not self.displays: raise backend.DisplayError('No se encontraron pantallas con modos disponibles.')
+            self.numbers=labels.numbers(self.displays)
             self.original_displays=copy.deepcopy(self.displays)
             if self.selected not in [d['name'] for d in self.displays]: self.selected=self.displays[0]['name']
             self.populate(); self.canvas.queue_draw(); self.changed()
         except Exception as exc: self.error(exc)
 
     def get_selected(self): return next((d for d in self.displays if d['name']==self.selected),None)
+    def toggle_labels(self, switch, pspec):
+        try: labels.set_enabled(switch.get_active())
+        except Exception as exc: self.error('No se pudo cambiar la opción: '+str(exc))
     def identify(self, *_):
         try:
             gi.require_version('GtkLayerShell', '0.1')
@@ -242,7 +252,7 @@ class App(Gtk.Window):
                 GtkLayerShell.init_for_window(overlay); GtkLayerShell.set_layer(overlay,GtkLayerShell.Layer.OVERLAY)
                 GtkLayerShell.set_monitor(overlay,matches[0]); GtkLayerShell.set_namespace(overlay,'pantallas-identificar')
                 box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); box.set_border_width(25); box.get_style_context().add_class('card')
-                box.pack_start(label(d['name'],'title',.5),True,True,0); box.pack_start(label(d['label'],'hint',.5),True,True,0); overlay.add(box); overlay.show_all()
+                box.pack_start(label(f"{self.numbers.get(d['name'], '?')} · {d['name']}",'title',.5),True,True,0); box.pack_start(label(d['label'],'hint',.5),True,True,0); overlay.add(box); overlay.show_all()
                 GLib.timeout_add_seconds(4,lambda win=overlay: (win.destroy(),False)[1])
         except Exception as exc: self.error('No se pudieron mostrar los identificadores: ' + str(exc))
     def select(self,name): self.selected=name; self.populate(); self.canvas.queue_draw()
@@ -252,9 +262,9 @@ class App(Gtk.Window):
     def populate(self):
         self.updating=True
         for row in self.listbox.get_children(): self.listbox.remove(row)
-        for d in self.displays:
+        for d in sorted(self.displays, key=lambda item: self.numbers.get(item['name'], 0)):
             row=Gtk.ListBoxRow(); row.name=d['name']; box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=2); box.set_border_width(9)
-            box.pack_start(label(d['name']+'  ·  '+d['label']),False,False,0); box.pack_start(label('Encendida' if d['enabled'] else 'Apagada','hint'),False,False,0); row.add(box); self.listbox.add(row)
+            box.pack_start(label(str(self.numbers.get(d['name'],'?'))+'  ·  '+d['name']+'  ·  '+d['label']),False,False,0); box.pack_start(label('Encendida' if d['enabled'] else 'Apagada','hint'),False,False,0); row.add(box); self.listbox.add(row)
             if d['name']==self.selected: self.listbox.select_row(row)
         self.listbox.show_all(); d=self.get_selected()
         if d:

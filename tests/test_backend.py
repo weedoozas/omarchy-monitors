@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from pantallas import backend as b
+from pantallas import labels
 
 
 def display(name='DP-1', x=0, y=0, enabled=True):
@@ -55,5 +56,28 @@ class BackendTest(unittest.TestCase):
     def test_renderer_only_edits_selected_outputs(self):
         text='hl.monitor({ output = "DP-9", mode = "800x600@60", position = "0x0", scale = 1 })\n'
         out=b.render(text,[display()]); self.assertIn(text,out); self.assertIn('output = "DP-1"',out)
+
+    def test_numeros_se_mantienen_al_cambiar_la_distribucion(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            with patch.object(labels,'CONFIG_DIR',root),patch.object(labels,'NUMBERS',root/'numbers.json'):
+                displays=[display('DP-1',1920,1080),display('eDP-1',0,0),display('DP-2',1920,0)]
+                first=labels.numbers(displays)
+                self.assertEqual(first,{'eDP-1':1,'DP-2':2,'DP-1':3})
+                displays[0]['y']=-10
+                self.assertEqual(labels.numbers(displays),first)
+                displays.append(display('HDMI-A-1',0,1080))
+                self.assertEqual(labels.numbers(displays)['HDMI-A-1'],4)
+
+    def test_activar_y_desactivar_nombres_persistentes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            with patch.object(labels,'CONFIG_DIR',root/'config'),patch.object(labels,'PREFERENCE',root/'config/enabled'),patch.object(labels,'AUTOSTART',root/'autostart/labels.desktop'):
+                labels.set_enabled(True,launch=False)
+                self.assertTrue(labels.enabled())
+                self.assertIn('--labels',labels.AUTOSTART.read_text())
+                labels.set_enabled(False)
+                self.assertFalse(labels.enabled())
+                self.assertFalse(labels.AUTOSTART.exists())
 
 if __name__ == '__main__': unittest.main()

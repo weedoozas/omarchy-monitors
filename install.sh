@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
-python3 -c 'import gi; gi.require_version("Gtk", "3.0"); gi.require_version("GtkLayerShell", "0.1"); from gi.repository import Gtk, GtkLayerShell' || {
+python3 -c 'import gi, cairo; gi.require_version("Gtk", "3.0"); gi.require_version("GtkLayerShell", "0.1"); from gi.repository import Gtk, GtkLayerShell' || {
   echo 'Faltan dependencias: Python, PyGObject, GTK 3 y gtk-layer-shell.' >&2; exit 1;
 }
 command -v hyprctl >/dev/null || { echo 'No se encontró hyprctl (Hyprland).' >&2; exit 1; }
