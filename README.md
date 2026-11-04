@@ -6,6 +6,8 @@ A visual display manager for Hyprland and Omarchy. This is an independent commun
 
 Drag monitors to arrange your desktop, identify physical displays, and adjust resolution, refresh rate, and scaling. Edges snap together, and the app warns about overlapping or disconnected layouts. The interface is available in English and Spanish; use the pixel-art flags in the header to switch languages. English is the default.
 
+On short windows, the display map and settings panel scroll independently so their controls remain accessible.
+
 **Always show display names** displays a stable number, connector, and model in the bottom-right corner of each enabled screen. The labels are click-through, stay visible after you close the app, and can be disabled using the same switch. The number is remembered when an output is disconnected and reconnected. Selecting a display highlights its physical label using the current theme's accent color. Closing the app returns all labels to their normal appearance.
 
 Changes are applied with a confirmation timer. Unless you confirm within 25 seconds, an independent process restores the previous configuration, even if the window closes. If another application has changed the files in the meantime, it avoids overwriting those changes and keeps recovery data in `~/.local/state/pantallas/`.

@@ -6,6 +6,8 @@ Gestor visual de pantallas para Hyprland y Omarchy. Es un proyecto comunitario i
 
 Arrastra los monitores para ordenar tu escritorio, identifica cada pantalla física y ajusta resolución, frecuencia y escala. Los bordes se acoplan al acercarlos y la aplicación avisa cuando una distribución se superpone o deja pantallas aisladas. La interfaz está disponible en inglés y español; usa las banderas pixeladas de la parte superior para cambiar de idioma. El idioma predeterminado es inglés.
 
+En ventanas de poca altura, el mapa y el panel de configuración se desplazan de forma independiente para mantener accesibles sus controles.
+
 La opción **Nombres siempre visibles** muestra en la esquina inferior derecha de cada monitor encendido un número estable, el conector y el modelo. Las etiquetas no capturan clics y siguen funcionando al cerrar la aplicación; se pueden desactivar desde el mismo control. El número se conserva al desconectar y reconectar cada salida.
 
 Al seleccionar un monitor en la aplicación, su etiqueta física se resalta con el color de acento del tema. Al cerrar la ventana, las etiquetas recuperan su aspecto normal.
