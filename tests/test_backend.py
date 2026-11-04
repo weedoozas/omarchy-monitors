@@ -1,0 +1,59 @@
+import copy
+import json
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+from pantallas import backend as b
+
+
+def display(name='DP-1', x=0, y=0, enabled=True):
+    return dict(name=name, label=name, enabled=enabled, x=x, y=y, width=1920, height=1080,
+                refresh=60., scale=1., transform=0, modes=[(1920,1080,60.)], mirror='none', rule={})
+
+class BackendTest(unittest.TestCase):
+    def test_valid_and_disconnected_layout(self):
+        a=display(); c=display('DP-2',1920,0)
+        self.assertIsNone(b.boxes_valid([a,c]))
+        c['x']=1921; self.assertIn('tocarse', b.boxes_valid([a,c]))
+        c['x']=1919; self.assertIn('superpuestas', b.boxes_valid([a,c]))
+        a['enabled']=False; c['enabled']=False; self.assertIn('menos una', b.boxes_valid([a,c]))
+
+    def test_scales_and_rotation_affect_geometry(self):
+        a=display(); a['scale']=1.6; a['transform']=1
+        self.assertEqual(b.size(a),(675,1200))
+        self.assertIsNone(b.boxes_valid([a,display('DP-2',675,0)]))
+
+    def test_disabled_display_restores_saved_size(self):
+        live=[dict(name='DP-1',model='TV',disabled=True,width=0,height=0,refreshRate=60,x=-1,y=-1,scale=1,transform=0,availableModes=['1360x768@60.02Hz','1920x1080@60.00Hz'])]
+        saved={'DP-1':dict(mode='1920x1080@60',position='1920x1080',scale=1)}
+        d=b.snapshot(live,saved)[0]
+        self.assertEqual((d['width'],d['height'],d['x'],d['y']),(1920,1080,1920,1080))
+        saved['DP-1']['mode']='0x0@60'
+        self.assertEqual(b.snapshot(live,saved)[0]['width'],1360)
+
+    def test_preserves_unrelated_lua_and_general_rule(self):
+        text='-- configuración propia\nlocal scale = 1\nhl.monitor({ output = "", mode = "preferred", position = "auto", scale = scale })\nhl.monitor({ output = "DP-1", mode = "1920x1080@60", position = "0x0", scale = 1, vrr = 1 })\n-- final\n'
+        out=b.render(text,[display(x=1920)])
+        self.assertIn('scale = scale',out); self.assertIn('vrr = 1',out); self.assertIn('position = "1920x0"',out); self.assertIn('-- final',out)
+
+    def test_rejects_ambiguous_lua_and_duplicates(self):
+        with self.assertRaises(b.DisplayError): b.render('hl.monitor({ output = "DP-1", scale = my_scale })', [display()])
+        s='hl.monitor({ output = "DP-1", scale = 1 })\n'
+        with self.assertRaises(b.DisplayError): b.render(s+s,[display()])
+
+    def test_revert_partial_transaction_and_protect_external_edits(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); p=root/'one'; q=root/'two'; txpath=root/'transaction.json'; p.write_text('new'); q.write_text('old2')
+            tx={'files':[{'path':str(p),'before':'old','after_hash':b.digest('new')},{'path':str(q),'before':'old2','after_hash':b.digest('new2')}]}
+            txpath.write_text(json.dumps(tx))
+            with patch.object(b,'LOCK',root/'lock'),patch.object(b,'ctl',return_value=''):
+                self.assertTrue(b.revert(txpath)); self.assertEqual(p.read_text(),'old'); self.assertEqual(q.read_text(),'old2')
+                p.write_text('externo'); txpath.write_text(json.dumps(tx))
+                self.assertFalse(b.revert(txpath)); self.assertEqual(p.read_text(),'externo'); self.assertTrue(txpath.exists())
+
+    def test_renderer_only_edits_selected_outputs(self):
+        text='hl.monitor({ output = "DP-9", mode = "800x600@60", position = "0x0", scale = 1 })\n'
+        out=b.render(text,[display()]); self.assertIn(text,out); self.assertIn('output = "DP-1"',out)
+
+if __name__ == '__main__': unittest.main()
