@@ -6,6 +6,8 @@ Arrastra los monitores para ordenar tu escritorio, identifica cada pantalla fís
 
 La opción **Nombres siempre visibles** muestra en la esquina inferior derecha de cada monitor encendido un número estable, el conector y el modelo. Las etiquetas no capturan clics y siguen funcionando al cerrar la aplicación; se pueden desactivar desde el mismo control. El número se conserva al desconectar y reconectar cada salida.
 
+Al seleccionar un monitor en la aplicación, su etiqueta física se resalta con el color de acento del tema. Al cerrar la ventana, las etiquetas recuperan su aspecto normal.
+
 Los cambios se aplican con un temporizador de confirmación. Si no confirmas en 25 segundos, un proceso independiente restaura la configuración anterior incluso si la ventana se cierra. Si detecta que otro programa cambió los archivos, evita sobrescribirlos y conserva datos para recuperación en `~/.local/state/pantallas/`.
 
 ## Instalación

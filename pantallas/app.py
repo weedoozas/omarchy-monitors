@@ -5,6 +5,7 @@ import math
 import os
 import time
 import tomllib
+import uuid
 from pathlib import Path
 os.environ['GDK_BACKEND'] = 'wayland'
 import gi
@@ -169,7 +170,8 @@ class App(Gtk.Window):
     def __init__(self):
         super().__init__(title='Omarchy Monitors')
         self.set_default_size(1060, 690); self.set_position(Gtk.WindowPosition.CENTER)
-        self.connect('destroy', Gtk.main_quit)
+        self.instance=uuid.uuid4().hex
+        self.connect('destroy', self.on_destroy)
         self.displays=[]; self.selected=None; self.updating=False; self.original=''; self.tx=None; self.numbers={}
         css = Gtk.CssProvider(); css.load_from_data(themed_css(theme()))
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -220,6 +222,10 @@ class App(Gtk.Window):
         dialog=Gtk.MessageDialog(transient_for=self,modal=True,message_type=Gtk.MessageType.ERROR,buttons=Gtk.ButtonsType.CLOSE,text='No se pudo completar la operación')
         dialog.format_secondary_text(str(text)); dialog.run(); dialog.destroy()
 
+    def on_destroy(self, *_):
+        labels.clear_selected(self.instance)
+        Gtk.main_quit()
+
     def reload(self, *_):
         try:
             self.original=backend.CONFIG.read_text()
@@ -228,6 +234,7 @@ class App(Gtk.Window):
             self.numbers=labels.numbers(self.displays)
             self.original_displays=copy.deepcopy(self.displays)
             if self.selected not in [d['name'] for d in self.displays]: self.selected=self.displays[0]['name']
+            labels.set_selected(self.selected,self.instance)
             self.populate(); self.canvas.queue_draw(); self.changed()
         except Exception as exc: self.error(exc)
 
@@ -255,7 +262,10 @@ class App(Gtk.Window):
                 box.pack_start(label(f"{self.numbers.get(d['name'], '?')} · {d['name']}",'title',.5),True,True,0); box.pack_start(label(d['label'],'hint',.5),True,True,0); overlay.add(box); overlay.show_all()
                 GLib.timeout_add_seconds(4,lambda win=overlay: (win.destroy(),False)[1])
         except Exception as exc: self.error('No se pudieron mostrar los identificadores: ' + str(exc))
-    def select(self,name): self.selected=name; self.populate(); self.canvas.queue_draw()
+    def select(self,name):
+        self.selected=name
+        labels.set_selected(name,self.instance)
+        self.populate(); self.canvas.queue_draw()
     def list_selected(self, box, row):
         if not self.updating and row: self.select(row.name)
 

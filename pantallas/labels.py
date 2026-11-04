@@ -11,6 +11,39 @@ CONFIG_DIR = Path(os.environ.get('XDG_CONFIG_HOME', Path.home()/'.config'))/'oma
 AUTOSTART = Path(os.environ.get('XDG_CONFIG_HOME', Path.home()/'.config'))/'autostart/omarchy-monitors-labels.desktop'
 PREFERENCE = CONFIG_DIR/'labels-enabled'
 NUMBERS = CONFIG_DIR/'monitor-numbers.json'
+SELECTION = backend.STATE/'selected-monitor.json'
+SELECTION_LOCK = backend.STATE/'selected-monitor.lock'
+
+def set_selected(name, instance):
+    backend.STATE.mkdir(parents=True,exist_ok=True)
+    with SELECTION_LOCK.open('a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        backend.atomic(SELECTION,json.dumps({'name':name,'pid':os.getpid(),'instance':instance}))
+
+def selected():
+    try:
+        data=json.loads(SELECTION.read_text())
+        if not isinstance(data,dict) or not isinstance(data.get('name'),str) or not isinstance(data.get('pid'),int) or data['pid'] <= 0: return ''
+        os.kill(data['pid'],0)
+        return data['name']
+    except (OSError,ValueError,TypeError): return ''
+
+def clear_selected(instance):
+    backend.STATE.mkdir(parents=True,exist_ok=True)
+    with SELECTION_LOCK.open('a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        try:
+            data=json.loads(SELECTION.read_text())
+            if isinstance(data,dict) and data.get('instance') == instance:
+                SELECTION.unlink(missing_ok=True)
+        except (OSError,ValueError): pass
+
+def selection_text_color(accent):
+    """Elegir un color de texto legible sobre el color de acento."""
+    channels=[int(accent[i:i+2],16)/255 for i in (1,3,5)]
+    def linear(c): return c/12.92 if c <= .04045 else ((c+.055)/1.055)**2.4
+    luminance=sum(weight*linear(channel) for weight,channel in zip((.2126,.7152,.0722),channels))
+    return '#000000' if luminance > .179 else '#ffffff'
 
 def enabled():
     return PREFERENCE.exists() and PREFERENCE.read_text().strip() == '1'
@@ -75,9 +108,9 @@ def run():
             signature=tuple((d['name'],d['label'],d['x'],d['y'],*backend.size(d),n) for d,m,n in candidates)+(theme_colors['background'],theme_colors['foreground'],theme_colors['accent'])
             if signature==last[0]: return True
             last[0]=signature
-            for win in windows.values(): win.destroy()
+            for win, _ in windows.values(): win.destroy()
             windows.clear()
-            css.load_from_data(('window {background: transparent;} .monitor-badge {background: '+theme_colors['background']+'; border: 1px solid '+theme_colors['accent']+'; border-radius: 4px; padding: 5px 9px; color: '+theme_colors['foreground']+'; font-family: "Pixelify Sans", monospace; font-size: 14px;}').encode())
+            css.load_from_data(('window {background: transparent;} .monitor-badge {background: '+theme_colors['background']+'; border: 1px solid '+theme_colors['accent']+'; border-radius: 4px; padding: 5px 9px; color: '+theme_colors['foreground']+'; font-family: "Pixelify Sans", monospace; font-size: 14px;} .monitor-badge.selected {background: '+theme_colors['accent']+'; color: '+selection_text_color(theme_colors['accent'])+'; font-weight: bold;}').encode())
             Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
             for d,monitor,n in candidates:
                 win=Gtk.Window(); win.set_decorated(False); win.set_app_paintable(True); win.set_accept_focus(False); win.set_focus_on_map(False)
@@ -91,8 +124,16 @@ def run():
                 title=Gtk.Label(label=f"{n} · {d['name']} · {d['label']}")
                 title.get_style_context().add_class('monitor-badge'); win.add(title)
                 win.connect('realize', lambda w: w.get_window().input_shape_combine_region(cairo.Region(),0,0))
-                win.show_all(); windows[d['name']]=win
+                win.show_all(); windows[d['name']]=(win,title)
         except Exception as exc:
             print('No se pudo actualizar los nombres:',exc,file=sys.stderr,flush=True)
         return True
-    refresh(); GLib.timeout_add_seconds(2,refresh); Gtk.main()
+    def update_selection():
+        name=selected()
+        for output,(_,title) in windows.items():
+            style=title.get_style_context()
+            if output == name: style.add_class('selected')
+            else: style.remove_class('selected')
+        return True
+    refresh(); update_selection()
+    GLib.timeout_add_seconds(2,refresh); GLib.timeout_add(250,update_selection); Gtk.main()

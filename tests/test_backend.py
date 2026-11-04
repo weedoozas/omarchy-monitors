@@ -80,4 +80,27 @@ class BackendTest(unittest.TestCase):
                 self.assertFalse(labels.enabled())
                 self.assertFalse(labels.AUTOSTART.exists())
 
+    def test_seleccion_sigue_instancia_y_se_limpia_al_cerrar(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            with patch.object(b,'STATE',root),patch.object(labels,'SELECTION',root/'selected.json'),patch.object(labels,'SELECTION_LOCK',root/'selection.lock'):
+                labels.set_selected('DP-1','instancia-a')
+                self.assertEqual(labels.selected(),'DP-1')
+                labels.set_selected('DP-2','instancia-b')
+                labels.clear_selected('instancia-a')
+                self.assertEqual(labels.selected(),'DP-2')
+                labels.clear_selected('instancia-b')
+                self.assertEqual(labels.selected(),'')
+
+    def test_color_de_texto_contrasta_con_acento(self):
+        self.assertEqual(labels.selection_text_color('#ffffff'),'#000000')
+        self.assertEqual(labels.selection_text_color('#000000'),'#ffffff')
+
+    def test_seleccion_huerfana_no_resalta(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); selection=root/'selected.json'
+            selection.write_text(json.dumps({'name':'DP-1','pid':99999999}))
+            with patch.object(labels,'SELECTION',selection):
+                self.assertEqual(labels.selected(),'')
+
 if __name__ == '__main__': unittest.main()
