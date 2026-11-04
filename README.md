@@ -8,13 +8,17 @@ Drag monitors to arrange your desktop, identify physical displays, and adjust re
 
 On short windows, the display map and settings panel scroll independently so their controls remain accessible.
 
-**Always show display names** displays a stable number, connector, and model in the bottom-right corner of each enabled screen. The labels are click-through, stay visible after you close the app, and can be disabled using the same switch. The number is remembered when an output is disconnected and reconnected. Selecting a display highlights its physical label using the current theme's accent color. Closing the app returns all labels to their normal appearance.
+While the app is open, **Show display names** displays a stable number, connector, and model in the bottom-right corner of each enabled screen. The labels are click-through, can be disabled using the switch, and disappear when the last app window closes. The number is remembered when an output is disconnected and reconnected. Selecting a display highlights its physical label using the current theme's accent color.
 
 Changes are applied with a confirmation timer. Unless you confirm within 25 seconds, an independent process restores the previous configuration, even if the window closes. If another application has changed the files in the meantime, it avoids overwriting those changes and keeps recovery data in `~/.local/state/pantallas/`.
 
 ## Installation
 
 Requires Linux with **Hyprland**, Omarchy's Lua monitor configuration, Python 3.11 or later, PyGObject, GTK 3, Pycairo, gtk-layer-shell, and fontconfig. On Arch Linux / Omarchy the corresponding packages are `python`, `python-gobject`, `python-cairo`, `gtk3`, `gtk-layer-shell`, and `fontconfig`.
+
+On Arch Linux and compatible distributions, download the `.pkg.tar.zst` package from the [latest release](https://github.com/weedoozas/omarchy-monitors/releases/latest) and install it with `sudo pacman -U ./omarchy-monitors-*.pkg.tar.zst`.
+
+Alternatively, install for the current user from source:
 
 ```sh
 git clone https://github.com/weedoozas/omarchy-monitors.git

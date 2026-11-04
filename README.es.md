@@ -8,15 +8,19 @@ Arrastra los monitores para ordenar tu escritorio, identifica cada pantalla fís
 
 En ventanas de poca altura, el mapa y el panel de configuración se desplazan de forma independiente para mantener accesibles sus controles.
 
-La opción **Nombres siempre visibles** muestra en la esquina inferior derecha de cada monitor encendido un número estable, el conector y el modelo. Las etiquetas no capturan clics y siguen funcionando al cerrar la aplicación; se pueden desactivar desde el mismo control. El número se conserva al desconectar y reconectar cada salida.
+Mientras la aplicación está abierta, la opción **Mostrar nombres en las pantallas** muestra en la esquina inferior derecha de cada monitor encendido un número estable, el conector y el modelo. Las etiquetas no capturan clics, se pueden desactivar con el interruptor y desaparecen al cerrar la última ventana. El número se conserva al desconectar y reconectar cada salida.
 
-Al seleccionar un monitor en la aplicación, su etiqueta física se resalta con el color de acento del tema. Al cerrar la ventana, las etiquetas recuperan su aspecto normal.
+Al seleccionar un monitor en la aplicación, su etiqueta física se resalta con el color de acento del tema.
 
 Los cambios se aplican con un temporizador de confirmación. Si no confirmas en 25 segundos, un proceso independiente restaura la configuración anterior incluso si la ventana se cierra. Si detecta que otro programa cambió los archivos, evita sobrescribirlos y conserva datos para recuperación en `~/.local/state/pantallas/`.
 
 ## Instalación
 
 Requiere Linux con **Hyprland**, configuración Lua de monitores de Omarchy, Python 3.11 o posterior, PyGObject, GTK 3, Pycairo, gtk-layer-shell y fontconfig. En Arch Linux / Omarchy los paquetes correspondientes son `python`, `python-gobject`, `python-cairo`, `gtk3`, `gtk-layer-shell` y `fontconfig`.
+
+En Arch Linux y distribuciones compatibles, descarga el paquete `.pkg.tar.zst` desde la [última versión](https://github.com/weedoozas/omarchy-monitors/releases/latest) e instálalo con `sudo pacman -U ./omarchy-monitors-*.pkg.tar.zst`.
+
+También puedes instalarlo desde el código para tu usuario:
 
 ```sh
 git clone https://github.com/weedoozas/omarchy-monitors.git

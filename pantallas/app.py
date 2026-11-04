@@ -193,6 +193,7 @@ class App(Gtk.Window):
         super().__init__(title='Omarchy Monitors')
         self.set_default_size(1060, 690); self.set_position(Gtk.WindowPosition.CENTER)
         self.instance=uuid.uuid4().hex
+        labels.register_instance(self.instance)
         self.connect('destroy', self.on_destroy)
         self.language=i18n.get_language(); self.translated_widgets=[]; self.language_buttons={}
         self.displays=[]; self.selected=None; self.updating=False; self.original=''; self.tx=None; self.numbers={}
@@ -245,7 +246,7 @@ class App(Gtk.Window):
         self.scales=Gtk.ComboBoxText(); self.scales.connect('changed',self.scale_changed); side.pack_start(self.scales,False,False,0)
         side.pack_start(self.localized_label('Una escala mayor aumenta el contenido y reduce el tamaño en el mapa.','hint'),False,False,0)
         side.pack_start(Gtk.Separator(),False,False,3)
-        labelrow=Gtk.Box(spacing=8); labelrow.pack_start(self.localized_label('Nombres siempre visibles'),True,True,0)
+        labelrow=Gtk.Box(spacing=8); labelrow.pack_start(self.localized_label('Mostrar nombres en las pantallas'),True,True,0)
         self.labels_switch=Gtk.Switch(); self.labels_switch.set_active(labels.enabled())
         self.labels_switch.connect('notify::active',self.toggle_labels); labelrow.pack_end(self.labels_switch,False,False,0)
         side.pack_start(labelrow,False,False,0)
@@ -253,6 +254,10 @@ class App(Gtk.Window):
         self.apply_button=self.localized_button('Aplicar cambios',self.apply,True); side.pack_start(self.apply_button,False,False,0)
         side.pack_start(self.localized_label('Podrás confirmar o volver atrás.','hint'),False,False,0)
         self.reload()
+        labels.start_service()
+        # Si otra ventana se cierra justo al abrir esta, reintentar después de
+        # que el proceso anterior haya liberado su bloqueo de instancia única.
+        GLib.timeout_add(700,lambda: (labels.start_service(),False)[1])
 
     def tr(self, text): return i18n.tr(text,self.language)
 
@@ -285,6 +290,7 @@ class App(Gtk.Window):
         dialog.format_secondary_text(self.tr(str(text))); dialog.run(); dialog.destroy()
 
     def on_destroy(self, *_):
+        labels.unregister_instance(self.instance)
         labels.clear_selected(self.instance)
         Gtk.main_quit()
 

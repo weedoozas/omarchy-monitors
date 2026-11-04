@@ -1,8 +1,9 @@
-"""Etiquetas persistentes de monitores, sin entrada de ratón ni teclado."""
+"""Etiquetas de monitores mientras la aplicación está abierta."""
 import fcntl
 import json
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 from . import backend
@@ -13,6 +14,49 @@ PREFERENCE = CONFIG_DIR/'labels-enabled'
 NUMBERS = CONFIG_DIR/'monitor-numbers.json'
 SELECTION = backend.STATE/'selected-monitor.json'
 SELECTION_LOCK = backend.STATE/'selected-monitor.lock'
+INSTANCES = backend.STATE/'label-instances'
+
+def process_started(pid):
+    """Identifica el proceso, incluso si el sistema reutiliza el mismo PID."""
+    try:
+        return (Path('/proc')/str(pid)/'stat').read_text().rsplit(')',1)[1].split()[19]
+    except (OSError,IndexError): return None
+
+def register_instance(instance):
+    INSTANCES.mkdir(parents=True,exist_ok=True)
+    backend.atomic(INSTANCES/instance,json.dumps({'pid':os.getpid(),'start':process_started(os.getpid())}))
+    # Las versiones antiguas iniciaban las etiquetas al entrar en la sesión.
+    if AUTOSTART.exists():
+        AUTOSTART.unlink(missing_ok=True)
+        stop_legacy_service()
+
+def stop_legacy_service():
+    """Detener solo el proceso de etiquetas de la versión anterior."""
+    for path in Path('/proc').iterdir():
+        if not path.name.isdigit(): continue
+        try:
+            if path.stat().st_uid != os.getuid(): continue
+            arguments=(path/'cmdline').read_bytes().split(b'\0')
+            if arguments[1:4] == [b'-m',b'pantallas',b'--labels']:
+                os.kill(int(path.name),signal.SIGTERM)
+        except (OSError,ValueError): continue
+
+def unregister_instance(instance):
+    (INSTANCES/instance).unlink(missing_ok=True)
+
+def active_instances():
+    try: paths=list(INSTANCES.iterdir())
+    except OSError: return False
+    active=False
+    for path in paths:
+        try:
+            data=json.loads(path.read_text()); pid=data['pid']; start=data['start']
+            if not isinstance(pid,int) or pid <= 0 or not start or process_started(pid) != start:
+                path.unlink(missing_ok=True)
+            else: active=True
+        except (OSError,ValueError,KeyError,TypeError):
+            continue
+    return active
 
 def set_selected(name, instance):
     backend.STATE.mkdir(parents=True,exist_ok=True)
@@ -46,7 +90,8 @@ def selection_text_color(accent):
     return '#000000' if luminance > .179 else '#ffffff'
 
 def enabled():
-    return PREFERENCE.exists() and PREFERENCE.read_text().strip() == '1'
+    try: return PREFERENCE.read_text().strip() == '1'
+    except FileNotFoundError: return True
 
 def numbers(displays):
     CONFIG_DIR.mkdir(parents=True,exist_ok=True)
@@ -64,19 +109,16 @@ def numbers(displays):
             backend.atomic(NUMBERS,json.dumps(mapping,ensure_ascii=False,indent=2)+'\n')
         return mapping
 
+def start_service():
+    if enabled() and active_instances():
+        subprocess.Popen([sys.executable,'-m','pantallas','--labels'],start_new_session=True,
+                         stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+
 def set_enabled(value, launch=True):
     CONFIG_DIR.mkdir(parents=True,exist_ok=True)
-    if value:
-        executable=Path.home()/'.local/bin/omarchy-monitors'
-        quoted='"'+str(executable).replace('\\','\\\\').replace('"','\\"').replace('`','\\`').replace('$','\\$')+'"'
-        backend.atomic(AUTOSTART,'[Desktop Entry]\nType=Application\nName=Omarchy Monitors - Nombres\nExec='+quoted+' --labels\nTerminal=false\nNoDisplay=true\n')
-        backend.atomic(PREFERENCE,'1\n')
-        if launch:
-            subprocess.Popen([sys.executable,'-m','pantallas','--labels'],start_new_session=True,
-                             stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-    else:
-        backend.atomic(PREFERENCE,'0\n')
-        AUTOSTART.unlink(missing_ok=True)
+    backend.atomic(PREFERENCE,'1\n' if value else '0\n')
+    AUTOSTART.unlink(missing_ok=True)
+    if value and launch: start_service()
 
 def run():
     os.environ['GDK_BACKEND']='wayland'
@@ -89,10 +131,11 @@ def run():
     lock=(backend.STATE/'labels.lock').open('a')
     try: fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
     except BlockingIOError: return
+    if not enabled() or not active_instances(): return
     windows={}; last=[None]
     css=Gtk.CssProvider()
     def refresh():
-        if not enabled(): Gtk.main_quit(); return False
+        if not enabled() or not active_instances(): Gtk.main_quit(); return False
         try:
             config=backend.CONFIG.read_text()
             ds=backend.snapshot(backend.live_monitors(),backend.read_saved(config))
@@ -129,6 +172,7 @@ def run():
             print('No se pudo actualizar los nombres:',exc,file=sys.stderr,flush=True)
         return True
     def update_selection():
+        if not enabled() or not active_instances(): Gtk.main_quit(); return False
         name=selected()
         for output,(_,title) in windows.items():
             style=title.get_style_context()

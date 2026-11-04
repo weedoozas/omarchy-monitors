@@ -69,16 +69,32 @@ class BackendTest(unittest.TestCase):
                 displays.append(display('HDMI-A-1',0,1080))
                 self.assertEqual(labels.numbers(displays)['HDMI-A-1'],4)
 
-    def test_activar_y_desactivar_nombres_persistentes(self):
+    def test_activar_y_desactivar_nombres_sin_arranque_automatico(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
             with patch.object(labels,'CONFIG_DIR',root/'config'),patch.object(labels,'PREFERENCE',root/'config/enabled'),patch.object(labels,'AUTOSTART',root/'autostart/labels.desktop'):
+                self.assertTrue(labels.enabled())
                 labels.set_enabled(True,launch=False)
                 self.assertTrue(labels.enabled())
-                self.assertIn('--labels',labels.AUTOSTART.read_text())
+                self.assertFalse(labels.AUTOSTART.exists())
                 labels.set_enabled(False)
                 self.assertFalse(labels.enabled())
                 self.assertFalse(labels.AUTOSTART.exists())
+
+    def test_etiquetas_siguen_ventanas_y_eliminan_instancias_huerfanas(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); instances=root/'instances'; old_autostart=root/'old.desktop'
+            old_autostart.write_text('versión anterior')
+            with patch.object(labels,'INSTANCES',instances),patch.object(labels,'AUTOSTART',old_autostart),patch.object(labels,'stop_legacy_service') as stop:
+                labels.register_instance('a'); labels.register_instance('b')
+                self.assertFalse(old_autostart.exists())
+                stop.assert_called_once()
+                self.assertTrue(labels.active_instances())
+                labels.unregister_instance('a')
+                self.assertTrue(labels.active_instances())
+                with patch.object(labels,'process_started',return_value=None):
+                    self.assertFalse(labels.active_instances())
+                self.assertFalse((instances/'b').exists())
 
     def test_seleccion_sigue_instancia_y_se_limpia_al_cerrar(self):
         with tempfile.TemporaryDirectory() as tmp:

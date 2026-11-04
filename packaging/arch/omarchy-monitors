@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export PYTHONPATH="/usr/share/omarchy-monitors${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m pantallas "$@"

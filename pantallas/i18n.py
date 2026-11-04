@@ -17,7 +17,7 @@ ENGLISH = {
     'Resolución y frecuencia': 'Resolution and refresh rate',
     'Escala': 'Scale',
     'Una escala mayor aumenta el contenido y reduce el tamaño en el mapa.': 'A larger scale makes content bigger and the display smaller on the map.',
-    'Nombres siempre visibles': 'Always show display names',
+    'Mostrar nombres en las pantallas': 'Show display names',
     'Aplicar cambios': 'Apply changes',
     'Podrás confirmar o volver atrás.': 'You can keep or revert the changes.',
     'No se pudo completar la operación': 'The operation could not be completed',

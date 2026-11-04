@@ -19,6 +19,7 @@ class VistaCompacta(unittest.TestCase):
         for language in ('en','es'):
             with self.subTest(language=language), patch.object(i18n,'get_language',return_value=language), \
                  patch.object(labels,'enabled',return_value=False), patch.object(labels,'clear_selected'), \
+                 patch.object(labels,'register_instance'), patch.object(labels,'unregister_instance'), patch.object(labels,'start_service'), \
                  patch.object(App,'reload'), patch.object(Gtk,'main_quit'):
                 app=App()
                 for name in ('eDP-1','DP-1','DP-2','HDMI-A-1'):

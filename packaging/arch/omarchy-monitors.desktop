@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Omarchy Monitors
+Comment=Arrange your Hyprland displays
+Comment[es]=Organiza tus pantallas de Hyprland
+Exec=omarchy-monitors
+Icon=omarchy-monitors
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=monitors;displays;screen;hyprland;wayland;omarchy;
+Keywords[es]=pantallas;monitores;hyprland;wayland;omarchy;
+StartupNotify=true
