@@ -1,18 +1,18 @@
 # Omarchy Monitors
 
-Gestor visual de pantallas para Hyprland y Omarchy. Es un proyecto comunitario independiente; no está afiliado al proyecto Omarchy.
+[Español](README.es.md)
 
-Arrastra los monitores para ordenar tu escritorio, identifica cada pantalla física y ajusta resolución, frecuencia y escala. Los bordes se acoplan al acercarlos y la aplicación avisa cuando una distribución se superpone o deja pantallas aisladas.
+A visual display manager for Hyprland and Omarchy. This is an independent community project and is not affiliated with Omarchy.
 
-La opción **Nombres siempre visibles** muestra en la esquina inferior derecha de cada monitor encendido un número estable, el conector y el modelo. Las etiquetas no capturan clics y siguen funcionando al cerrar la aplicación; se pueden desactivar desde el mismo control. El número se conserva al desconectar y reconectar cada salida.
+Drag monitors to arrange your desktop, identify physical displays, and adjust resolution, refresh rate, and scaling. Edges snap together, and the app warns about overlapping or disconnected layouts. The interface is available in English and Spanish; use the pixel-art flags in the header to switch languages. English is the default.
 
-Al seleccionar un monitor en la aplicación, su etiqueta física se resalta con el color de acento del tema. Al cerrar la ventana, las etiquetas recuperan su aspecto normal.
+**Always show display names** displays a stable number, connector, and model in the bottom-right corner of each enabled screen. The labels are click-through, stay visible after you close the app, and can be disabled using the same switch. The number is remembered when an output is disconnected and reconnected. Selecting a display highlights its physical label using the current theme's accent color. Closing the app returns all labels to their normal appearance.
 
-Los cambios se aplican con un temporizador de confirmación. Si no confirmas en 25 segundos, un proceso independiente restaura la configuración anterior incluso si la ventana se cierra. Si detecta que otro programa cambió los archivos, evita sobrescribirlos y conserva datos para recuperación en `~/.local/state/pantallas/`.
+Changes are applied with a confirmation timer. Unless you confirm within 25 seconds, an independent process restores the previous configuration, even if the window closes. If another application has changed the files in the meantime, it avoids overwriting those changes and keeps recovery data in `~/.local/state/pantallas/`.
 
-## Instalación
+## Installation
 
-Requiere Linux con **Hyprland**, configuración Lua de monitores de Omarchy, Python 3.11 o posterior, PyGObject, GTK 3, Pycairo, gtk-layer-shell y fontconfig. En Arch Linux / Omarchy los paquetes correspondientes son `python`, `python-gobject`, `python-cairo`, `gtk3`, `gtk-layer-shell` y `fontconfig`.
+Requires Linux with **Hyprland**, Omarchy's Lua monitor configuration, Python 3.11 or later, PyGObject, GTK 3, Pycairo, gtk-layer-shell, and fontconfig. On Arch Linux / Omarchy the corresponding packages are `python`, `python-gobject`, `python-cairo`, `gtk3`, `gtk-layer-shell`, and `fontconfig`.
 
 ```sh
 git clone https://github.com/weedoozas/omarchy-monitors.git
@@ -20,19 +20,19 @@ cd omarchy-monitors
 ./install.sh
 ```
 
-Busca **Omarchy Monitors** en el lanzador o ejecuta `~/.local/bin/omarchy-monitors`. La instalación es para el usuario actual y no requiere permisos de administrador. La tipografía Pixelify Sans se instala en el directorio de fuentes del usuario.
+Search for **Omarchy Monitors** in your launcher or run `~/.local/bin/omarchy-monitors`. Installation is per-user and does not require administrator privileges. The installer puts Pixelify Sans in the user's font directory.
 
-## Cómo se guarda
+## Configuration and limitations
 
-La aplicación edita reglas explícitas `hl.monitor` en `~/.config/hypr/monitors.lua`, conservando el resto del archivo y la regla general de Omarchy. Rechaza reglas complejas que no pueda interpretar de manera segura y se niega a aplicar si el archivo o los monitores cambiaron desde la última recarga. Aplica y verifica los cambios con `hyprctl`.
+The app edits explicit `hl.monitor` rules in `~/.config/hypr/monitors.lua`, preserving the rest of the file and Omarchy's general rule. It rejects complex rules that it cannot interpret safely and refuses to apply changes if the file or the connected displays have changed since the last reload. Changes are applied and verified using `hyprctl`.
 
-Actualmente no edita distribuciones en modo espejo ni configuraciones antiguas `monitors.conf`. En configuraciones Lua personalizadas con expresiones en las reglas individuales, ajusta las reglas manualmente. La identificación visual requiere gtk-layer-shell y una correspondencia única entre el monitor de GTK y Hyprland. El funcionamiento depende de los modos que anuncie cada monitor.
+Mirrored layouts and legacy `monitors.conf` configurations cannot currently be edited. If individual Lua rules use custom expressions, edit those rules manually. Visual identification requires gtk-layer-shell and a unique correspondence between GTK and Hyprland monitors. Available modes depend on what each display reports.
 
-## Desarrollo
+## Development
 
 ```sh
 python3 -m unittest discover -s tests -v
 python3 -m pantallas
 ```
 
-Código bajo licencia [MIT](LICENSE). La fuente [Pixelify Sans](https://github.com/google/fonts/tree/main/ofl/pixelifysans) se distribuye bajo su propia [SIL Open Font License](data/fonts/OFL.txt). El logotipo fue creado con generación de imágenes para este proyecto.
+Code is licensed under the [MIT License](LICENSE). [Pixelify Sans](https://github.com/google/fonts/tree/main/ofl/pixelifysans) is distributed under its own [SIL Open Font License](data/fonts/OFL.txt). The project logo was created using image generation.

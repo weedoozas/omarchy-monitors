@@ -12,6 +12,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GLib
 from . import backend
+from . import i18n
 from . import labels
 
 CSS = b'''
@@ -29,6 +30,8 @@ button:hover { background: #345063; }
 button.suggested-action { background: #43d2b3; color: #0c2526; border: 0; font-weight: bold; }
 button.suggested-action:hover { background: #67e4c6; }
 button:disabled { opacity: .45; }
+button.language { padding: 5px; }
+button.language-active { border: 2px solid #43d2b3; }
 combobox button { min-height: 26px; }
 .warning { color: #f6c779; }
 list, row { background: #192635; color: #eef3f8; }
@@ -77,6 +80,25 @@ def button(text, callback, primary=False):
     if primary: w.get_style_context().add_class('suggested-action')
     w.connect('clicked', callback)
     return w
+
+def draw_flag(widget, cr, language):
+    """Dibuja una bandera pequeña mediante una cuadrícula de píxeles."""
+    columns,rows=15,10
+    width=widget.get_allocated_width()/columns; height=widget.get_allocated_height()/rows
+    for y in range(rows):
+        for x in range(columns):
+            if language == 'es':
+                color = '#aa151b' if y < 3 or y >= 7 else '#f1bf00'
+                if x in (4,5) and y in (4,5): color='#aa151b'
+            else:
+                color='#012169'
+                diagonal=abs(abs((x-7)/7)-abs((y-4.5)/4.5))
+                if diagonal < .30: color='#ffffff'
+                if diagonal < .13: color='#c8102e'
+                if x in (6,7,8) or y in (3,4,5,6): color='#ffffff'
+                if x == 7 or y in (4,5): color='#c8102e'
+            cr.set_source_rgb(*rgb(color)); cr.rectangle(x*width,y*height,width+0.1,height+0.1); cr.fill()
+    return False
 
 class Canvas(Gtk.DrawingArea):
     def __init__(self, app):
@@ -172,6 +194,7 @@ class App(Gtk.Window):
         self.set_default_size(1060, 690); self.set_position(Gtk.WindowPosition.CENTER)
         self.instance=uuid.uuid4().hex
         self.connect('destroy', self.on_destroy)
+        self.language=i18n.get_language(); self.translated_widgets=[]; self.language_buttons={}
         self.displays=[]; self.selected=None; self.updating=False; self.original=''; self.tx=None; self.numbers={}
         css = Gtk.CssProvider(); css.load_from_data(themed_css(theme()))
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -184,43 +207,75 @@ class App(Gtk.Window):
             header.pack_start(Gtk.Image.new_from_pixbuf(icon),False,False,0)
         else:
             symbol=label('▦'); symbol.set_markup('<span size="24000">▦</span>'); header.pack_start(symbol,False,False,0)
-        titles=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=3); titles.pack_start(label('OMARCHY MONITORS','title'),False,False,0); titles.pack_start(label('Tu escritorio, en el orden que tú quieras','subtitle'),False,False,0); header.pack_start(titles,True,True,0)
-        header.pack_start(button('Identificar',self.identify),False,False,0)
-        header.pack_start(button('Recargar',self.reload),False,False,0)
+        titles=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=3); titles.pack_start(label('OMARCHY MONITORS','title'),False,False,0); titles.pack_start(self.localized_label('Tu escritorio, en el orden que tú quieras','subtitle'),False,False,0); header.pack_start(titles,True,True,0)
+        for code,name in (('en','English'),('es','Español')):
+            flag=Gtk.DrawingArea(); flag.set_size_request(30,20); flag.connect('draw',draw_flag,code)
+            control=Gtk.Button(); control.add(flag); control.set_tooltip_text(name); control.get_accessible().set_name(name)
+            control.get_style_context().add_class('language'); control.connect('clicked',lambda _,lang=code: self.change_language(lang))
+            self.language_buttons[code]=control; header.pack_start(control,False,False,0)
+        self.update_language_buttons()
+        header.pack_start(self.localized_button('Identificar',self.identify),False,False,0)
+        header.pack_start(self.localized_button('Recargar',self.reload),False,False,0)
         content=Gtk.Box(); root.pack_start(content,True,True,0)
         main=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=14); main.set_border_width(22); content.pack_start(main,True,True,0)
         row=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=4)
-        row.pack_start(label('DISTRIBUCIÓN','section'),False,False,0)
-        row.pack_start(label('Arrastra para mover · Los bordes se ajustan solos','hint'),False,False,0)
+        row.pack_start(self.localized_label('DISTRIBUCIÓN','section'),False,False,0)
+        row.pack_start(self.localized_label('Arrastra para mover · Los bordes se ajustan solos','hint'),False,False,0)
         main.pack_start(row,False,False,0)
         frame=Gtk.Frame(); frame.get_style_context().add_class('card'); main.pack_start(frame,True,True,0)
         self.canvas=Canvas(self); frame.add(self.canvas)
-        self.message=label('Selecciona una pantalla para ver sus opciones.','hint'); main.pack_start(self.message,False,False,0)
+        self.message=label(self.tr('Selecciona una pantalla para ver sus opciones.'),'hint'); main.pack_start(self.message,False,False,0)
         side=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=14); side.set_border_width(22); side.set_size_request(300,-1); side.get_style_context().add_class('sidebar'); content.pack_start(side,False,False,0)
-        side.pack_start(label('PANTALLAS CONECTADAS','section'),False,False,0)
+        side.pack_start(self.localized_label('PANTALLAS CONECTADAS','section'),False,False,0)
         self.listbox=Gtk.ListBox(); self.listbox.set_selection_mode(Gtk.SelectionMode.SINGLE); self.listbox.connect('row-selected',self.list_selected); side.pack_start(self.listbox,False,False,0)
         side.pack_start(Gtk.Separator(),False,False,2)
-        self.detail=label('Selecciona una pantalla','title'); side.pack_start(self.detail,False,False,0)
+        self.detail=label(self.tr('Selecciona una pantalla'),'title'); side.pack_start(self.detail,False,False,0)
         self.enabled=Gtk.Switch(); self.enabled.connect('notify::active',self.toggle_enabled)
-        switchrow=Gtk.Box(); switchrow.pack_start(label('Pantalla encendida'),True,True,0); switchrow.pack_end(self.enabled,False,False,0); side.pack_start(switchrow,False,False,0)
-        side.pack_start(label('Resolución y frecuencia','hint'),False,False,0)
+        switchrow=Gtk.Box(); switchrow.pack_start(self.localized_label('Pantalla encendida'),True,True,0); switchrow.pack_end(self.enabled,False,False,0); side.pack_start(switchrow,False,False,0)
+        side.pack_start(self.localized_label('Resolución y frecuencia','hint'),False,False,0)
         self.modes=Gtk.ComboBoxText(); self.modes.connect('changed',self.mode_changed); side.pack_start(self.modes,False,False,0)
-        side.pack_start(label('Escala','hint'),False,False,0)
+        side.pack_start(self.localized_label('Escala','hint'),False,False,0)
         self.scales=Gtk.ComboBoxText(); self.scales.connect('changed',self.scale_changed); side.pack_start(self.scales,False,False,0)
-        side.pack_start(label('Una escala mayor aumenta el contenido y reduce el tamaño en el mapa.','hint'),False,False,0)
+        side.pack_start(self.localized_label('Una escala mayor aumenta el contenido y reduce el tamaño en el mapa.','hint'),False,False,0)
         side.pack_start(Gtk.Separator(),False,False,3)
-        labelrow=Gtk.Box(spacing=8); labelrow.pack_start(label('Nombres siempre visibles'),True,True,0)
+        labelrow=Gtk.Box(spacing=8); labelrow.pack_start(self.localized_label('Nombres siempre visibles'),True,True,0)
         self.labels_switch=Gtk.Switch(); self.labels_switch.set_active(labels.enabled())
         self.labels_switch.connect('notify::active',self.toggle_labels); labelrow.pack_end(self.labels_switch,False,False,0)
         side.pack_start(labelrow,False,False,0)
         side.pack_start(Gtk.Box(),True,True,0)
-        self.apply_button=button('Aplicar cambios',self.apply,True); side.pack_start(self.apply_button,False,False,0)
-        side.pack_start(label('Podrás confirmar o volver atrás.','hint'),False,False,0)
+        self.apply_button=self.localized_button('Aplicar cambios',self.apply,True); side.pack_start(self.apply_button,False,False,0)
+        side.pack_start(self.localized_label('Podrás confirmar o volver atrás.','hint'),False,False,0)
         self.reload()
 
+    def tr(self, text): return i18n.tr(text,self.language)
+
+    def localized_label(self, text, css=None):
+        widget=label(self.tr(text),css)
+        self.translated_widgets.append((widget,text,'set_text'))
+        return widget
+
+    def localized_button(self, text, callback, primary=False):
+        widget=button(self.tr(text),callback,primary)
+        self.translated_widgets.append((widget,text,'set_label'))
+        return widget
+
+    def update_language_buttons(self):
+        for code,control in self.language_buttons.items():
+            style=control.get_style_context()
+            if code == self.language: style.add_class('language-active')
+            else: style.remove_class('language-active')
+
+    def change_language(self, language):
+        if language == self.language: return
+        try: i18n.set_language(language)
+        except OSError as exc: self.error(str(exc)); return
+        self.language=language
+        for widget,text,method in self.translated_widgets: getattr(widget,method)(self.tr(text))
+        self.update_language_buttons(); self.populate(); self.changed()
+
     def error(self, text):
-        dialog=Gtk.MessageDialog(transient_for=self,modal=True,message_type=Gtk.MessageType.ERROR,buttons=Gtk.ButtonsType.CLOSE,text='No se pudo completar la operación')
-        dialog.format_secondary_text(str(text)); dialog.run(); dialog.destroy()
+        dialog=Gtk.MessageDialog(transient_for=self,modal=True,message_type=Gtk.MessageType.ERROR,buttons=Gtk.ButtonsType.CLOSE,text=self.tr('No se pudo completar la operación'))
+        dialog.format_secondary_text(self.tr(str(text))); dialog.run(); dialog.destroy()
 
     def on_destroy(self, *_):
         labels.clear_selected(self.instance)
@@ -274,7 +329,7 @@ class App(Gtk.Window):
         for row in self.listbox.get_children(): self.listbox.remove(row)
         for d in sorted(self.displays, key=lambda item: self.numbers.get(item['name'], 0)):
             row=Gtk.ListBoxRow(); row.name=d['name']; box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=2); box.set_border_width(9)
-            box.pack_start(label(str(self.numbers.get(d['name'],'?'))+'  ·  '+d['name']+'  ·  '+d['label']),False,False,0); box.pack_start(label('Encendida' if d['enabled'] else 'Apagada','hint'),False,False,0); row.add(box); self.listbox.add(row)
+            box.pack_start(label(str(self.numbers.get(d['name'],'?'))+'  ·  '+d['name']+'  ·  '+d['label']),False,False,0); box.pack_start(label(self.tr('Encendida' if d['enabled'] else 'Apagada'),'hint'),False,False,0); row.add(box); self.listbox.add(row)
             if d['name']==self.selected: self.listbox.select_row(row)
         self.listbox.show_all(); d=self.get_selected()
         if d:
@@ -303,18 +358,18 @@ class App(Gtk.Window):
         self.get_selected()['scale']=self.scale_values[combo.get_active()]; self.canvas.queue_draw(); self.changed()
     def changed(self):
         issue=backend.boxes_valid(self.displays) if self.displays else 'No hay pantallas disponibles.'
-        self.message.set_text(issue or 'Las pantallas están conectadas por sus bordes.'); self.message.get_style_context().remove_class('warning')
+        self.message.set_text(self.tr(issue or 'Las pantallas están conectadas por sus bordes.')); self.message.get_style_context().remove_class('warning')
         if issue: self.message.get_style_context().add_class('warning')
         self.apply_button.set_sensitive(not issue)
     def apply(self, *_):
         try: self.tx=backend.apply(self.displays,self.original,self.original_displays)
         except Exception as exc: self.error(exc); return
-        dialog=Gtk.MessageDialog(transient_for=self,modal=True,message_type=Gtk.MessageType.QUESTION,buttons=Gtk.ButtonsType.NONE,text='¿Se ven bien las pantallas?')
-        dialog.add_button('Volver atrás',Gtk.ResponseType.REJECT); dialog.add_button('Conservar cambios',Gtk.ResponseType.ACCEPT)
+        dialog=Gtk.MessageDialog(transient_for=self,modal=True,message_type=Gtk.MessageType.QUESTION,buttons=Gtk.ButtonsType.NONE,text=self.tr('¿Se ven bien las pantallas?'))
+        dialog.add_button(self.tr('Volver atrás'),Gtk.ResponseType.REJECT); dialog.add_button(self.tr('Conservar cambios'),Gtk.ResponseType.ACCEPT)
         deadline=time.monotonic()+max(0,json.loads(self.tx.read_text())['deadline']-time.time())
         def tick():
             remaining=max(0,math.ceil(deadline-time.monotonic()))
-            dialog.format_secondary_text(f'Si no confirmas, se restaurará la distribución anterior en {remaining} segundos.')
+            dialog.format_secondary_text(self.tr('Si no confirmas, se restaurará la distribución anterior en {seconds} segundos.').format(seconds=remaining))
             if remaining<=0: dialog.response(Gtk.ResponseType.REJECT); return False
             return True
         tick(); timer=GLib.timeout_add_seconds(1,tick); response=dialog.run(); GLib.source_remove(timer) if GLib.MainContext.default().find_source_by_id(timer) else None; dialog.destroy()
