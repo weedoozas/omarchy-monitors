@@ -1,0 +1,26 @@
+# Maintainer: weedoozas <67092499+weedoozas at users dot noreply dot github dot com>
+pkgname=omarchy-monitors
+pkgver=1.2.0
+pkgrel=1
+pkgdesc='Visual display manager for Hyprland and Omarchy'
+arch=('any')
+url='https://github.com/weedoozas/omarchy-monitors'
+license=('MIT' 'OFL-1.1')
+depends=('python>=3.11' 'python-gobject' 'python-cairo' 'gtk3' 'gtk-layer-shell' 'fontconfig' 'hyprland')
+source=("${pkgname}-${pkgver}.tar.gz::https://codeload.github.com/weedoozas/omarchy-monitors/tar.gz/refs/tags/v${pkgver}")
+sha256sums=('54a858ce23fd3a6f995e29a7bdcdd9ec81e2939ed728d2f4c6fd9de91f55cffc')
+
+package() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+  install -dm755 "${pkgdir}/usr/share/${pkgname}/pantallas"
+  install -m644 pantallas/*.py "${pkgdir}/usr/share/${pkgname}/pantallas/"
+  install -Dm644 data/omarchy-monitors.png "${pkgdir}/usr/share/${pkgname}/data/omarchy-monitors.png"
+  install -Dm644 data/omarchy-monitors.png "${pkgdir}/usr/share/pixmaps/omarchy-monitors.png"
+  install -Dm644 data/fonts/PixelifySans.ttf "${pkgdir}/usr/share/fonts/TTF/PixelifySans-OmarchyMonitors.ttf"
+  install -Dm644 data/fonts/OFL.txt "${pkgdir}/usr/share/licenses/${pkgname}/OFL.txt"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  install -Dm755 packaging/arch/omarchy-monitors "${pkgdir}/usr/bin/omarchy-monitors"
+  install -Dm644 packaging/arch/omarchy-monitors.desktop "${pkgdir}/usr/share/applications/omarchy-monitors.desktop"
+  install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+  install -Dm644 README.es.md "${pkgdir}/usr/share/doc/${pkgname}/README.es.md"
+}

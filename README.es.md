@@ -20,6 +20,8 @@ Requiere Linux con **Hyprland**, configuración Lua de monitores de Omarchy, Pyt
 
 En Arch Linux y distribuciones compatibles, descarga el paquete `.pkg.tar.zst` desde la [última versión](https://github.com/weedoozas/omarchy-monitors/releases/latest) e instálalo con `sudo pacman -U ./omarchy-monitors-*.pkg.tar.zst`.
 
+La receta para construir el paquete está en [`packaging/arch/PKGBUILD`](packaging/arch/PKGBUILD); ejecútala con `makepkg` desde esa carpeta.
+
 También puedes instalarlo desde el código para tu usuario:
 
 ```sh

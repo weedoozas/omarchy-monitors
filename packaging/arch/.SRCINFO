@@ -1,0 +1,19 @@
+pkgbase = omarchy-monitors
+	pkgdesc = Visual display manager for Hyprland and Omarchy
+	pkgver = 1.2.0
+	pkgrel = 1
+	url = https://github.com/weedoozas/omarchy-monitors
+	arch = any
+	license = MIT
+	license = OFL-1.1
+	depends = python>=3.11
+	depends = python-gobject
+	depends = python-cairo
+	depends = gtk3
+	depends = gtk-layer-shell
+	depends = fontconfig
+	depends = hyprland
+	source = omarchy-monitors-1.2.0.tar.gz::https://codeload.github.com/weedoozas/omarchy-monitors/tar.gz/refs/tags/v1.2.0
+	sha256sums = 54a858ce23fd3a6f995e29a7bdcdd9ec81e2939ed728d2f4c6fd9de91f55cffc
+
+pkgname = omarchy-monitors

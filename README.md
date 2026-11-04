@@ -18,6 +18,8 @@ Requires Linux with **Hyprland**, Omarchy's Lua monitor configuration, Python 3.
 
 On Arch Linux and compatible distributions, download the `.pkg.tar.zst` package from the [latest release](https://github.com/weedoozas/omarchy-monitors/releases/latest) and install it with `sudo pacman -U ./omarchy-monitors-*.pkg.tar.zst`.
 
+The Arch build recipe is available in [`packaging/arch/PKGBUILD`](packaging/arch/PKGBUILD); build it with `makepkg` from that directory.
+
 Alternatively, install for the current user from source:
 
 ```sh
